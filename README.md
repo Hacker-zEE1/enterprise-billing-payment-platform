@@ -24,6 +24,14 @@ The system will manage the lifecycle of billing and payment transactions includi
 
 Customer → Account → Bill → Invoice → Payment → Payment Allocation → Financial Transaction → Reconciliation → Notification
 
+## Architecture
+
+The application will initially be developed as a modular monolith.
+
+Business capabilities such as customer management, account management, billing, payment processing, transaction management, reconciliation and notifications will be organized as separate modules within a single Spring Boot application.
+
+As the project evolves, selected modules may be extracted into independently deployable microservices based on clear business boundaries and integration requirements.
+
 ## Project Status
 
 In Development
