@@ -100,4 +100,38 @@ public class Customer {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
+
+
+    public void updateDetails(
+            String firstName,
+            String lastName,
+            String email,
+            String phoneNumber,
+            LocalDateTime updatedAt
+    ) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.updatedAt = updatedAt;
+    }
+
+    public void deactivate(LocalDateTime updatedAt) {
+        if (this.status == CustomerStatus.INACTIVE) {
+            return;
+        }
+
+        this.status = CustomerStatus.INACTIVE;
+        this.updatedAt = updatedAt;
+    }
+
+
+    public void activate(LocalDateTime updatedAt) {
+        if (this.status == CustomerStatus.ACTIVE) {
+            return;
+        }
+
+        this.status = CustomerStatus.ACTIVE;
+        this.updatedAt = updatedAt;
+    }
 }

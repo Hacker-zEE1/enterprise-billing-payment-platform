@@ -2,11 +2,13 @@ package com.shaqib.billing.customer.service;
 
 import com.shaqib.billing.customer.entity.Customer;
 import com.shaqib.billing.customer.entity.CustomerStatus;
+import com.shaqib.billing.customer.exception.CustomerNotFoundException;
 import com.shaqib.billing.customer.exception.DuplicateCustomerEmailException;
 import com.shaqib.billing.customer.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -42,6 +44,83 @@ public class CustomerService {
                 now,
                 now
         );
+
+        return customerRepository.save(customer);
+    }
+
+
+    public Customer getCustomerById(UUID customerId) {
+        return customerRepository.findById(customerId)
+                .orElseThrow(() ->
+                        new CustomerNotFoundException(
+                                "Customer not found with id: " + customerId
+                        )
+                );
+    }
+
+
+    public List<Customer> getAllCustomers() {
+        return customerRepository.findAll();
+    }
+
+
+    public Customer updateCustomer(
+            UUID customerId,
+            String firstName,
+            String lastName,
+            String email,
+            String phoneNumber
+    ) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() ->
+                        new CustomerNotFoundException(
+                                "Customer not found with id: " + customerId
+                        )
+                );
+
+        if (customerRepository.existsByEmailAndCustomerIdNot(email, customerId)) {
+            throw new DuplicateCustomerEmailException(
+                    "Customer with this email already exists"
+            );
+        }
+
+        customer.updateDetails(
+                firstName,
+                lastName,
+                email,
+                phoneNumber,
+                LocalDateTime.now()
+        );
+
+        return customerRepository.save(customer);
+    }
+
+
+    public Customer deactivateCustomer(UUID customerId) {
+
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() ->
+                        new CustomerNotFoundException(
+                                "Customer not found with id: " + customerId
+                        )
+                );
+
+        customer.deactivate(LocalDateTime.now());
+
+        return customerRepository.save(customer);
+    }
+
+
+    public Customer activateCustomer(UUID customerId) {
+
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() ->
+                        new CustomerNotFoundException(
+                                "Customer not found with id: " + customerId
+                        )
+                );
+
+        customer.activate(LocalDateTime.now());
 
         return customerRepository.save(customer);
     }
