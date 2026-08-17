@@ -1,5 +1,6 @@
 package com.shaqib.billing.common.exception;
 
+import com.shaqib.billing.account.exception.AccountNotFoundException;
 import com.shaqib.billing.customer.exception.CustomerNotFoundException;
 import com.shaqib.billing.customer.exception.DuplicateCustomerEmailException;
 import org.springframework.http.HttpStatus;
@@ -65,6 +66,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CustomerNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleCustomerNotFound(
             CustomerNotFoundException exception
+    ) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                exception.getMessage(),
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(response);
+    }
+
+
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccountNotFound(
+            AccountNotFoundException exception
     ) {
 
         ApiErrorResponse response = new ApiErrorResponse(
