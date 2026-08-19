@@ -1,6 +1,9 @@
 package com.shaqib.billing.common.exception;
 
 import com.shaqib.billing.account.exception.AccountNotFoundException;
+import com.shaqib.billing.bill.exception.BillNotFoundException;
+import com.shaqib.billing.bill.exception.InvalidBillException;
+import com.shaqib.billing.bill.exception.InvalidBillStatusTransitionException;
 import com.shaqib.billing.customer.exception.CustomerNotFoundException;
 import com.shaqib.billing.customer.exception.DuplicateCustomerEmailException;
 import org.springframework.http.HttpStatus;
@@ -97,6 +100,62 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
+                .body(response);
+    }
+
+
+    @ExceptionHandler(InvalidBillException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidBillException(
+            InvalidBillException exception
+    ) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                exception.getMessage(),
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+
+    @ExceptionHandler(BillNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleBillNotFoundException(
+            BillNotFoundException exception
+    ) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                exception.getMessage(),
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(response);
+    }
+
+    @ExceptionHandler(InvalidBillStatusTransitionException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidBillStatusTransitionException(
+            InvalidBillStatusTransitionException exception
+    ) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                exception.getMessage(),
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
                 .body(response);
     }
 }
