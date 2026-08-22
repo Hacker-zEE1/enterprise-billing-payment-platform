@@ -144,4 +144,17 @@ public class Bill {
         this.status = BillStatus.CANCELLED;
         this.updatedAt = updatedAt;
     }
+
+
+    public void markPaid(LocalDateTime updatedAt) {
+
+        if (this.status != BillStatus.ISSUED) {
+            throw new InvalidBillStatusTransitionException(
+                    "Only ISSUED bills can be marked as PAID"
+            );
+        }
+
+        this.status = BillStatus.PAID;
+        this.updatedAt = updatedAt;
+    }
 }
