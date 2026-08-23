@@ -2,82 +2,147 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Razorpay Test Checkout</title>
+    <title>Razorpay Test Payment</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
 
 <h2>Razorpay Test Payment</h2>
 
-<button id="payButton">Pay ₹300</button>
+<label>Account ID</label><br>
+<input type="text" id="accountId" style="width: 420px;"><br><br>
 
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<label>Amount</label><br>
+<input type="number" id="amount" value="300"><br><br>
+
+<label>Payment Method</label><br>
+<select id="paymentMethod">
+    <option value="UPI">UPI</option>
+    <option value="CARD">CARD</option>
+    <option value="NET_BANKING">NET_BANKING</option>
+    <option value="BANK_TRANSFER">BANK_TRANSFER</option>
+</select>
+
+<br><br>
+
+<button onclick="startPayment()">Pay</button>
+
+<p id="status"></p>
 
 <script>
-    const options = {
-        key: "rzp_test_TT0TxzYvfpGc0S",
+    async function startPayment() {
 
-        amount: 30000,
+        const accountId = document.getElementById("accountId").value.trim();
+        const amount = Number(document.getElementById("amount").value);
+        const paymentMethod = document.getElementById("paymentMethod").value;
+        const statusElement = document.getElementById("status");
 
-        currency: "INR",
+        if (!accountId) {
+            statusElement.innerText = "Account ID is required";
+            return;
+        }
 
-        name: "Enterprise Billing Platform",
+        try {
 
-        description: "Test Payment",
+            statusElement.innerText = "Creating payment...";
 
-        order_id: "order_TT2Cx6Z6xAzhbr",
+            const configResponse = await fetch(
+                "/api/v1/payments/gateway/config"
+            );
 
-        handler: async function (response) {
+            if (!configResponse.ok) {
+                throw new Error("Unable to load Razorpay configuration");
+            }
 
-            console.log("Payment successful");
-            console.log("Payment ID:", response.razorpay_payment_id);
-            console.log("Order ID:", response.razorpay_order_id);
+            const config = await configResponse.json();
 
-            const verifyResponse = await fetch(
-                "/api/v1/accounts/9f86f2bb-eed7-4793-80e6-0e5afaaa3619/payments/62b11ff8-151a-4b48-9765-40352066d51e/verify",
+            const paymentResponse = await fetch(
+                `/api/v1/accounts/${accountId}/payments`,
                 {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        gatewayOrderId: response.razorpay_order_id,
-                        gatewayPaymentId: response.razorpay_payment_id,
-                        signature: response.razorpay_signature
+                        amount: amount,
+                        paymentMethod: paymentMethod
                     })
                 }
             );
 
-            const result = await verifyResponse.json();
-
-            if (verifyResponse.ok) {
-                console.log("Backend verification successful:", result);
-
-                alert(
-                    "Payment verified successfully!\n\n" +
-                    "Payment ID: " + result.gatewayPaymentId +
-                    "\nStatus: " + result.status
-                );
-            } else {
-                console.error("Backend verification failed:", result);
-
-                alert(
-                    "Payment verification failed:\n" +
-                    result.message
-                );
+            if (!paymentResponse.ok) {
+                const error = await paymentResponse.text();
+                throw new Error(error);
             }
-        },
 
-        theme: {
-            color: "#3399cc"
+            const payment = await paymentResponse.json();
+
+            statusElement.innerText =
+                "Payment created: " + payment.paymentReference;
+
+            const options = {
+                key: config.keyId,
+                amount: Math.round(payment.amount * 100),
+                currency: "INR",
+                name: "Enterprise Billing Platform",
+                description: payment.paymentReference,
+                order_id: payment.gatewayOrderId,
+
+                handler: async function (response) {
+
+                    statusElement.innerText =
+                        "Payment completed. Verifying...";
+
+                    const verifyResponse = await fetch(
+                        `/api/v1/accounts/${accountId}/payments/${payment.paymentId}/verify`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                gatewayOrderId:
+                                response.razorpay_order_id,
+
+                                gatewayPaymentId:
+                                response.razorpay_payment_id,
+
+                                signature:
+                                response.razorpay_signature
+                            })
+                        }
+                    );
+
+                    if (!verifyResponse.ok) {
+                        const error = await verifyResponse.text();
+                        throw new Error(error);
+                    }
+
+                    const verifiedPayment =
+                        await verifyResponse.json();
+
+                    statusElement.innerText =
+                        "Payment verified successfully. Status: "
+                        + verifiedPayment.status;
+                },
+
+                theme: {}
+            };
+
+            const razorpay = new Razorpay(options);
+
+            razorpay.on("payment.failed", function () {
+                statusElement.innerText = "Payment failed";
+            });
+
+            razorpay.open();
+
+        } catch (error) {
+            console.error(error);
+            statusElement.innerText =
+                "Error: " + error.message;
         }
-    };
-
-    const razorpay = new Razorpay(options);
-
-    document.getElementById("payButton").onclick = function (event) {
-        razorpay.open();
-        event.preventDefault();
-    };
+    }
 </script>
 
 </body>
