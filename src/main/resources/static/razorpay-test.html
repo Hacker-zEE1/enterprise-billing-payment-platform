@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Razorpay Test Checkout</title>
+</head>
+<body>
+
+<h2>Razorpay Test Payment</h2>
+
+<button id="payButton">Pay ₹300</button>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+    const options = {
+        key: "rzp_test_TT0TxzYvfpGc0S",
+
+        amount: 30000,
+
+        currency: "INR",
+
+        name: "Enterprise Billing Platform",
+
+        description: "Test Payment",
+
+        order_id: "order_TT2Cx6Z6xAzhbr",
+
+        handler: async function (response) {
+
+            console.log("Payment successful");
+            console.log("Payment ID:", response.razorpay_payment_id);
+            console.log("Order ID:", response.razorpay_order_id);
+
+            const verifyResponse = await fetch(
+                "/api/v1/accounts/9f86f2bb-eed7-4793-80e6-0e5afaaa3619/payments/62b11ff8-151a-4b48-9765-40352066d51e/verify",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        gatewayOrderId: response.razorpay_order_id,
+                        gatewayPaymentId: response.razorpay_payment_id,
+                        signature: response.razorpay_signature
+                    })
+                }
+            );
+
+            const result = await verifyResponse.json();
+
+            if (verifyResponse.ok) {
+                console.log("Backend verification successful:", result);
+
+                alert(
+                    "Payment verified successfully!\n\n" +
+                    "Payment ID: " + result.gatewayPaymentId +
+                    "\nStatus: " + result.status
+                );
+            } else {
+                console.error("Backend verification failed:", result);
+
+                alert(
+                    "Payment verification failed:\n" +
+                    result.message
+                );
+            }
+        },
+
+        theme: {
+            color: "#3399cc"
+        }
+    };
+
+    const razorpay = new Razorpay(options);
+
+    document.getElementById("payButton").onclick = function (event) {
+        razorpay.open();
+        event.preventDefault();
+    };
+</script>
+
+</body>
+</html>

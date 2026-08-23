@@ -6,7 +6,10 @@ import com.shaqib.billing.account.repository.AccountRepository;
 import com.shaqib.billing.payment.entity.Payment;
 import com.shaqib.billing.payment.entity.PaymentMethod;
 import com.shaqib.billing.payment.entity.PaymentStatus;
+import com.shaqib.billing.payment.exception.InvalidPaymentStatusTransitionException;
 import com.shaqib.billing.payment.exception.PaymentNotFoundException;
+import com.shaqib.billing.payment.gateway.GatewayOrderResponse;
+import com.shaqib.billing.payment.gateway.PaymentGateway;
 import com.shaqib.billing.payment.repository.PaymentRepository;
 import com.shaqib.billing.payment.exception.InvalidPaymentException;
 import org.springframework.stereotype.Service;
@@ -22,15 +25,18 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final AccountRepository accountRepository;
     private final PaymentReferenceGenerator paymentReferenceGenerator;
+    private final PaymentGateway paymentGateway;
 
     public PaymentService(
             PaymentRepository paymentRepository,
             AccountRepository accountRepository,
-            PaymentReferenceGenerator paymentReferenceGenerator
+            PaymentReferenceGenerator paymentReferenceGenerator,
+            PaymentGateway paymentGateway
     ) {
         this.paymentRepository = paymentRepository;
         this.accountRepository = accountRepository;
         this.paymentReferenceGenerator = paymentReferenceGenerator;
+        this.paymentGateway = paymentGateway;
     }
 
     public Payment createPayment(
@@ -52,18 +58,34 @@ public class PaymentService {
             );
         }
 
+        String paymentReference =
+                paymentReferenceGenerator.generate();
+
         LocalDateTime now = LocalDateTime.now();
 
         Payment payment = new Payment(
                 UUID.randomUUID(),
                 account,
-                paymentReferenceGenerator.generate(),
+                paymentReference,
                 amount,
                 paymentMethod,
                 PaymentStatus.PENDING,
                 now,
                 now,
                 now
+        );
+
+        GatewayOrderResponse gatewayOrder =
+                paymentGateway.createOrder(
+                        amount,
+                        "INR",
+                        paymentReference
+                );
+
+        payment.assignGatewayOrder(
+                gatewayOrder.gateway(),
+                gatewayOrder.gatewayOrderId(),
+                LocalDateTime.now()
         );
 
         return paymentRepository.save(payment);
@@ -126,6 +148,80 @@ public class PaymentService {
         Payment payment = getPaymentById(accountId, paymentId);
 
         payment.cancel(LocalDateTime.now());
+
+        return paymentRepository.save(payment);
+    }
+
+
+    public Payment verifyPayment(
+            UUID accountId,
+            UUID paymentId,
+            String gatewayOrderId,
+            String gatewayPaymentId,
+            String signature
+    ) {
+
+        Payment payment = getPaymentById(accountId, paymentId);
+
+        if (!gatewayOrderId.equals(payment.getGatewayOrderId())) {
+            throw new InvalidPaymentException(
+                    "Gateway order ID does not match the payment"
+            );
+        }
+
+        boolean valid = paymentGateway.verifyPayment(
+                gatewayOrderId,
+                gatewayPaymentId,
+                signature
+        );
+
+        if (!valid) {
+            throw new InvalidPaymentException(
+                    "Invalid payment signature"
+            );
+        }
+
+        payment.completeGatewayPayment(
+                gatewayPaymentId,
+                LocalDateTime.now()
+        );
+
+        return paymentRepository.save(payment);
+    }
+
+    public Payment processCapturedPaymentWebhook(
+            String gatewayOrderId,
+            String gatewayPaymentId
+    ) {
+
+        Payment payment = paymentRepository
+                .findByGatewayOrderId(gatewayOrderId)
+                .orElseThrow(() -> new PaymentNotFoundException(
+                        "Payment not found for gateway order id: "
+                                + gatewayOrderId
+                ));
+
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+
+            if (gatewayPaymentId.equals(payment.getGatewayPaymentId())) {
+                return payment;
+            }
+
+            throw new InvalidPaymentException(
+                    "Payment already completed with a different gateway payment ID"
+            );
+        }
+
+        if (payment.getStatus() != PaymentStatus.PENDING) {
+            throw new InvalidPaymentStatusTransitionException(
+                    "Only PENDING payments can be completed from webhook"
+            );
+        }
+
+        payment.completeGatewayPayment(
+                gatewayPaymentId,
+                LocalDateTime.now()
+        );
 
         return paymentRepository.save(payment);
     }

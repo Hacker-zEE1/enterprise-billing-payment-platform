@@ -42,6 +42,16 @@ public class Payment {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gateway", length = 30)
+    private PaymentGatewayProvider gateway;
+
+    @Column(name = "gateway_order_id", length = 100)
+    private String gatewayOrderId;
+
+    @Column(name = "gateway_payment_id", length = 100)
+    private String gatewayPaymentId;
+
     protected Payment() {
     }
 
@@ -103,7 +113,17 @@ public class Payment {
         return updatedAt;
     }
 
+    public PaymentGatewayProvider getGateway() {
+        return gateway;
+    }
 
+    public String getGatewayOrderId() {
+        return gatewayOrderId;
+    }
+
+    public String getGatewayPaymentId() {
+        return gatewayPaymentId;
+    }
     public void markSuccess(LocalDateTime updatedAt) {
 
         if (this.status != PaymentStatus.PENDING) {
@@ -141,6 +161,32 @@ public class Payment {
         }
 
         this.status = PaymentStatus.CANCELLED;
+        this.updatedAt = updatedAt;
+    }
+
+
+    public void assignGatewayOrder(
+            PaymentGatewayProvider gateway,
+            String gatewayOrderId,
+            LocalDateTime updatedAt
+    ) {
+        this.gateway = gateway;
+        this.gatewayOrderId = gatewayOrderId;
+        this.updatedAt = updatedAt;
+    }
+
+    public void completeGatewayPayment(
+            String gatewayPaymentId,
+            LocalDateTime updatedAt
+    ) {
+        if (this.status != PaymentStatus.PENDING) {
+            throw new InvalidPaymentStatusTransitionException(
+                    "Only PENDING payments can be completed"
+            );
+        }
+
+        this.gatewayPaymentId = gatewayPaymentId;
+        this.status = PaymentStatus.SUCCESS;
         this.updatedAt = updatedAt;
     }
 }

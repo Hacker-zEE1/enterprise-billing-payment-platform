@@ -15,7 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import com.shaqib.billing.payment.gateway.PaymentGatewayException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -235,6 +235,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(response);
+    }
+
+    @ExceptionHandler(PaymentGatewayException.class)
+    public ResponseEntity<ApiErrorResponse> handlePaymentGatewayException(
+            PaymentGatewayException ex
+    ) {
+
+        ApiErrorResponse errorResponse = new ApiErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_GATEWAY.value(),
+                HttpStatus.BAD_GATEWAY.getReasonPhrase(),
+                ex.getMessage(),
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .body(errorResponse);
     }
 
 }

@@ -2,6 +2,7 @@ package com.shaqib.billing.payment.controller;
 
 import com.shaqib.billing.payment.dto.CreatePaymentRequest;
 import com.shaqib.billing.payment.dto.PaymentResponse;
+import com.shaqib.billing.payment.dto.VerifyPaymentRequest;
 import com.shaqib.billing.payment.entity.Payment;
 import com.shaqib.billing.payment.service.PaymentService;
 import jakarta.validation.Valid;
@@ -47,6 +48,9 @@ public class PaymentController {
                 payment.getAmount(),
                 payment.getPaymentMethod(),
                 payment.getStatus(),
+                payment.getGateway(),
+                payment.getGatewayOrderId(),
+                payment.getGatewayPaymentId(),
                 payment.getPaymentDate(),
                 payment.getCreatedAt(),
                 payment.getUpdatedAt()
@@ -124,4 +128,23 @@ public class PaymentController {
 
         return ResponseEntity.ok(toResponse(payment));
     }
+
+    @PostMapping("/{paymentId}/verify")
+    public ResponseEntity<PaymentResponse> verifyPayment(
+            @PathVariable UUID accountId,
+            @PathVariable UUID paymentId,
+            @Valid @RequestBody VerifyPaymentRequest request
+    ) {
+
+        Payment payment = paymentService.verifyPayment(
+                accountId,
+                paymentId,
+                request.gatewayOrderId(),
+                request.gatewayPaymentId(),
+                request.signature()
+        );
+
+        return ResponseEntity.ok(toResponse(payment));
+    }
+
 }

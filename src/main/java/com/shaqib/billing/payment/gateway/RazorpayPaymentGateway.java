@@ -1,0 +1,104 @@
+package com.shaqib.billing.payment.gateway;
+
+import com.razorpay.Order;
+import com.razorpay.RazorpayClient;
+import com.razorpay.RazorpayException;
+import com.shaqib.billing.payment.entity.PaymentGatewayProvider;
+import org.json.JSONObject;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+
+@Component
+public class RazorpayPaymentGateway implements PaymentGateway {
+
+    private final RazorpayProperties razorpayProperties;
+
+    public RazorpayPaymentGateway(RazorpayProperties razorpayProperties) {
+        this.razorpayProperties = razorpayProperties;
+    }
+
+    @Override
+    public GatewayOrderResponse createOrder(
+            BigDecimal amount,
+            String currency,
+            String receipt
+    ) {
+
+        try {
+            RazorpayClient razorpayClient = new RazorpayClient(
+                    razorpayProperties.getKeyId(),
+                    razorpayProperties.getKeySecret()
+            );
+
+            long amountInPaise = amount
+                    .multiply(BigDecimal.valueOf(100))
+                    .longValueExact();
+
+            JSONObject orderRequest = new JSONObject();
+            orderRequest.put("amount", amountInPaise);
+            orderRequest.put("currency", currency);
+            orderRequest.put("receipt", receipt);
+
+            Order order = razorpayClient.orders.create(orderRequest);
+
+            return new GatewayOrderResponse(
+                    order.get("id"),
+                    PaymentGatewayProvider.RAZORPAY,
+                    order.get("status")
+            );
+
+        } catch (RazorpayException e) {
+            throw new PaymentGatewayException(
+                    "Failed to create Razorpay order",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public boolean verifyPayment(
+            String gatewayOrderId,
+            String gatewayPaymentId,
+            String signature
+    ) {
+
+        try {
+            JSONObject attributes = new JSONObject();
+            attributes.put("razorpay_order_id", gatewayOrderId);
+            attributes.put("razorpay_payment_id", gatewayPaymentId);
+            attributes.put("razorpay_signature", signature);
+
+            return com.razorpay.Utils.verifyPaymentSignature(
+                    attributes,
+                    razorpayProperties.getKeySecret()
+            );
+
+        } catch (RazorpayException e) {
+            throw new PaymentGatewayException(
+                    "Failed to verify Razorpay payment signature",
+                    e
+            );
+        }
+    }
+
+
+    @Override
+    public boolean verifyWebhook(
+            String payload,
+            String signature
+    ) {
+        try {
+            return com.razorpay.Utils.verifyWebhookSignature(
+                    payload,
+                    signature,
+                    razorpayProperties.getWebhookSecret()
+            );
+        } catch (RazorpayException e) {
+            throw new PaymentGatewayException(
+                    "Failed to verify Razorpay webhook signature",
+                    e
+            );
+        }
+    }
+}
