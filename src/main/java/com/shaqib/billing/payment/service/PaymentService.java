@@ -181,6 +181,22 @@ public class PaymentService {
             );
         }
 
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            if (gatewayPaymentId.equals(payment.getGatewayPaymentId())) {
+                return payment;
+            }
+
+            throw new InvalidPaymentException(
+                    "Payment already completed with a different gateway payment"
+            );
+        }
+
+        if (payment.getStatus() != PaymentStatus.PENDING) {
+            throw new InvalidPaymentStatusTransitionException(
+                    "Only PENDING payments can be verified"
+            );
+        }
+
         payment.completeGatewayPayment(
                 gatewayPaymentId,
                 LocalDateTime.now()
