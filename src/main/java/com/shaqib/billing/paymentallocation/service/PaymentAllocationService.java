@@ -163,4 +163,106 @@ public class PaymentAllocationService {
         return paymentAllocationRepository
                 .findAllByBillBillId(billId);
     }
+
+    public Bill validateBillForPayment(
+            UUID accountId,
+            UUID billId,
+            BigDecimal paymentAmount
+    ) {
+
+        Bill bill = billRepository
+                .findByBillIdAndAccountAccountId(billId, accountId)
+                .orElseThrow(() ->
+                        new BillNotFoundException(
+                                "Bill not found with id: " + billId
+                        )
+                );
+
+        if (bill.getStatus() != BillStatus.ISSUED) {
+            throw new InvalidPaymentAllocationException(
+                    "Only ISSUED bills can receive payments"
+            );
+        }
+
+        BigDecimal totalBillAllocated =
+                paymentAllocationRepository
+                        .findAllByBillBillId(billId)
+                        .stream()
+                        .map(PaymentAllocation::getAllocatedAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal remainingBillAmount =
+                bill.getTotalAmount().subtract(totalBillAllocated);
+
+        if (remainingBillAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidPaymentAllocationException(
+                    "Bill is already fully paid"
+            );
+        }
+
+        if (paymentAmount.compareTo(remainingBillAmount) > 0) {
+            throw new InvalidPaymentAllocationException(
+                    "Payment amount exceeds remaining bill amount"
+            );
+        }
+
+        return bill;
+    }
+
+    public PaymentAllocation allocateSuccessfulPaymentToBill(
+            UUID accountId,
+            UUID paymentId
+    ) {
+
+        Payment payment = paymentRepository
+                .findByPaymentIdAndAccountAccountId(paymentId, accountId)
+                .orElseThrow(() ->
+                        new PaymentNotFoundException(
+                                "Payment not found with id: " + paymentId
+                        )
+                );
+
+        Bill bill = payment.getBill();
+
+        if (bill == null) {
+            throw new InvalidPaymentAllocationException(
+                    "No bill linked to payment"
+            );
+        }
+
+        if (paymentAllocationRepository
+                .existsByPaymentPaymentIdAndBillBillId(
+                        paymentId,
+                        bill.getBillId()
+                )) {
+
+            return paymentAllocationRepository
+                    .findAllByPaymentPaymentId(paymentId)
+                    .stream()
+                    .filter(allocation ->
+                            allocation.getBill()
+                                    .getBillId()
+                                    .equals(bill.getBillId())
+                    )
+                    .findFirst()
+                    .orElseThrow();
+        }
+
+        return createAllocation(
+                accountId,
+                paymentId,
+                bill.getBillId(),
+                payment.getAmount()
+        );
+    }
+
+    public BigDecimal getTotalAllocatedForBill(UUID billId) {
+
+        return paymentAllocationRepository
+                .findAllByBillBillId(billId)
+                .stream()
+                .map(PaymentAllocation::getAllocatedAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
 }

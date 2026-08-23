@@ -31,6 +31,7 @@ public class PaymentController {
 
         Payment payment = paymentService.createPayment(
                 accountId,
+                request.billId(),
                 request.amount(),
                 request.paymentMethod()
         );

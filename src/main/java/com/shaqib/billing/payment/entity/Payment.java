@@ -1,6 +1,7 @@
 package com.shaqib.billing.payment.entity;
 
 import com.shaqib.billing.account.entity.Account;
+import com.shaqib.billing.bill.entity.Bill;
 import jakarta.persistence.*;
 import com.shaqib.billing.payment.exception.InvalidPaymentStatusTransitionException;
 import java.math.BigDecimal;
@@ -52,12 +53,17 @@ public class Payment {
     @Column(name = "gateway_payment_id", length = 100)
     private String gatewayPaymentId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bill_id")
+    private Bill bill;
+
     protected Payment() {
     }
 
     public Payment(
             UUID paymentId,
             Account account,
+            Bill bill,
             String paymentReference,
             BigDecimal amount,
             PaymentMethod paymentMethod,
@@ -68,6 +74,7 @@ public class Payment {
     ) {
         this.paymentId = paymentId;
         this.account = account;
+        this.bill = bill;
         this.paymentReference = paymentReference;
         this.amount = amount;
         this.paymentMethod = paymentMethod;
@@ -75,6 +82,7 @@ public class Payment {
         this.paymentDate = paymentDate;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+
     }
 
     public UUID getPaymentId() {
@@ -124,6 +132,11 @@ public class Payment {
     public String getGatewayPaymentId() {
         return gatewayPaymentId;
     }
+
+    public Bill getBill() {
+        return bill;
+    }
+
     public void markSuccess(LocalDateTime updatedAt) {
 
         if (this.status != PaymentStatus.PENDING) {

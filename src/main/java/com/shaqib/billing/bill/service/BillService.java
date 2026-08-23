@@ -3,11 +3,13 @@ package com.shaqib.billing.bill.service;
 import com.shaqib.billing.account.entity.Account;
 import com.shaqib.billing.account.exception.AccountNotFoundException;
 import com.shaqib.billing.account.repository.AccountRepository;
+import com.shaqib.billing.bill.dto.PayableBillResponse;
 import com.shaqib.billing.bill.entity.Bill;
 import com.shaqib.billing.bill.entity.BillStatus;
 import com.shaqib.billing.bill.exception.BillNotFoundException;
 import com.shaqib.billing.bill.exception.InvalidBillException;
 import com.shaqib.billing.bill.repository.BillRepository;
+import com.shaqib.billing.paymentallocation.service.PaymentAllocationService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,15 +24,18 @@ public class BillService {
     private final BillRepository billRepository;
     private final AccountRepository accountRepository;
     private final BillNumberGenerator billNumberGenerator;
+    private final PaymentAllocationService paymentAllocationService;
 
     public BillService(
             BillRepository billRepository,
             AccountRepository accountRepository,
-            BillNumberGenerator billNumberGenerator
+            BillNumberGenerator billNumberGenerator,
+            PaymentAllocationService paymentAllocationService
     ) {
         this.billRepository = billRepository;
         this.accountRepository = accountRepository;
         this.billNumberGenerator = billNumberGenerator;
+        this.paymentAllocationService = paymentAllocationService;
     }
 
     public Bill createBill(
@@ -143,5 +148,41 @@ public class BillService {
         bill.cancel(LocalDateTime.now());
 
         return billRepository.save(bill);
+    }
+
+
+    public List<PayableBillResponse> getPayableBills(UUID accountId) {
+
+        List<Bill> bills = billRepository
+                .findAllByAccountAccountId(accountId);
+
+        return bills.stream()
+                .filter(bill -> bill.getStatus() == BillStatus.ISSUED)
+                .map(bill -> {
+
+                    BigDecimal paidAmount =
+                            paymentAllocationService
+                                    .getTotalAllocatedForBill(
+                                            bill.getBillId()
+                                    );
+
+                    BigDecimal remainingAmount =
+                            bill.getTotalAmount()
+                                    .subtract(paidAmount);
+
+                    return new PayableBillResponse(
+                            bill.getBillId(),
+                            bill.getBillNumber(),
+                            bill.getTotalAmount(),
+                            paidAmount,
+                            remainingAmount,
+                            bill.getDueDate()
+                    );
+                })
+                .filter(bill ->
+                        bill.remainingAmount()
+                                .compareTo(BigDecimal.ZERO) > 0
+                )
+                .toList();
     }
 }

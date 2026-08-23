@@ -13,4 +13,9 @@ public interface PaymentAllocationRepository
     List<PaymentAllocation> findAllByPaymentPaymentId(UUID paymentId);
 
     List<PaymentAllocation> findAllByBillBillId(UUID billId);
+
+    boolean existsByPaymentPaymentIdAndBillBillId(
+            UUID paymentId,
+            UUID billId
+    );
 }

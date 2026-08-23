@@ -2,6 +2,7 @@ package com.shaqib.billing.bill.controller;
 
 import com.shaqib.billing.bill.dto.BillResponse;
 import com.shaqib.billing.bill.dto.CreateBillRequest;
+import com.shaqib.billing.bill.dto.PayableBillResponse;
 import com.shaqib.billing.bill.entity.Bill;
 import com.shaqib.billing.bill.service.BillService;
 import jakarta.validation.Valid;
@@ -40,6 +41,16 @@ public class BillController {
                 .status(HttpStatus.CREATED)
                 .body(toResponse(bill));
     }
+
+    @GetMapping("/payable")
+    public ResponseEntity<List<PayableBillResponse>> getPayableBills(
+            @PathVariable UUID accountId
+    ) {
+        return ResponseEntity.ok(
+                billService.getPayableBills(accountId)
+        );
+    }
+
 
     @GetMapping("/{billId}")
     public ResponseEntity<BillResponse> getBillById(
@@ -87,6 +98,7 @@ public class BillController {
 
         return ResponseEntity.ok(toResponse(bill));
     }
+
 
     private BillResponse toResponse(Bill bill) {
         return new BillResponse(

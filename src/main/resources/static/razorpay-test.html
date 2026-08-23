@@ -10,10 +10,28 @@
 <h2>Razorpay Test Payment</h2>
 
 <label>Account ID</label><br>
-<input type="text" id="accountId" style="width: 420px;"><br><br>
+<input type="text" id="accountId" style="width: 420px;">
+
+<button onclick="loadBills()">Load Bills</button>
+
+<br><br>
+
+<label>Bill</label><br>
+<select id="billSelect"
+        onchange="billChanged()"
+        style="width: 420px;">
+    <option value="">Select a bill</option>
+</select>
+
+<br><br>
 
 <label>Amount</label><br>
-<input type="number" id="amount" value="300"><br><br>
+<input type="number"
+       id="amount"
+       step="0.01"
+       min="0.01">
+
+<br><br>
 
 <label>Payment Method</label><br>
 <select id="paymentMethod">
@@ -30,31 +48,232 @@
 <p id="status"></p>
 
 <script>
-    async function startPayment() {
 
-        const accountId = document.getElementById("accountId").value.trim();
-        const amount = Number(document.getElementById("amount").value);
-        const paymentMethod = document.getElementById("paymentMethod").value;
-        const statusElement = document.getElementById("status");
+    let payableBills = [];
+
+
+    async function loadBills(showStatus = true) {
+
+        const accountId =
+            document.getElementById("accountId").value.trim();
+
+        const billSelect =
+            document.getElementById("billSelect");
+
+        const amountInput =
+            document.getElementById("amount");
+
+        const statusElement =
+            document.getElementById("status");
 
         if (!accountId) {
-            statusElement.innerText = "Account ID is required";
+
+            if (showStatus) {
+                statusElement.innerText =
+                    "Account ID is required";
+            }
+
             return;
         }
 
         try {
 
-            statusElement.innerText = "Creating payment...";
+            if (showStatus) {
+                statusElement.innerText =
+                    "Loading payable bills...";
+            }
+
+            const response = await fetch(
+                `/api/v1/accounts/${accountId}/bills/payable`
+            );
+
+            if (!response.ok) {
+
+                const error =
+                    await response.text();
+
+                throw new Error(error);
+            }
+
+            payableBills =
+                await response.json();
+
+            billSelect.innerHTML =
+                '<option value="">Select a bill</option>';
+
+            amountInput.value = "";
+            amountInput.removeAttribute("max");
+
+            if (payableBills.length === 0) {
+
+                if (showStatus) {
+                    statusElement.innerText =
+                        "No payable bills found for this account";
+                }
+
+                return;
+            }
+
+            payableBills.forEach(bill => {
+
+                const option =
+                    document.createElement("option");
+
+                option.value =
+                    bill.billId;
+
+                option.textContent =
+                    `${bill.billNumber} | Remaining ₹${bill.remainingAmount}`;
+
+                billSelect.appendChild(option);
+            });
+
+            if (showStatus) {
+
+                statusElement.innerText =
+                    `${payableBills.length} payable bill(s) found`;
+            }
+
+        } catch (error) {
+
+            console.error(error);
+
+            if (showStatus) {
+
+                statusElement.innerText =
+                    "Error: " + error.message;
+            }
+        }
+    }
+
+
+    function billChanged() {
+
+        const billId =
+            document.getElementById("billSelect").value;
+
+        const amountInput =
+            document.getElementById("amount");
+
+        const selectedBill =
+            payableBills.find(
+                bill => bill.billId === billId
+            );
+
+        if (!selectedBill) {
+
+            amountInput.value = "";
+            amountInput.removeAttribute("max");
+
+            return;
+        }
+
+        amountInput.value =
+            selectedBill.remainingAmount;
+
+        amountInput.max =
+            selectedBill.remainingAmount;
+    }
+
+
+    async function startPayment() {
+
+        const accountId =
+            document.getElementById("accountId").value.trim();
+
+        const billId =
+            document.getElementById("billSelect").value;
+
+        const amount =
+            Number(document.getElementById("amount").value);
+
+        const paymentMethod =
+            document.getElementById("paymentMethod").value;
+
+        const amountInput =
+            document.getElementById("amount");
+
+        const statusElement =
+            document.getElementById("status");
+
+
+        if (!accountId) {
+
+            statusElement.innerText =
+                "Account ID is required";
+
+            return;
+        }
+
+
+        if (!billId) {
+
+            statusElement.innerText =
+                "Please select a bill";
+
+            return;
+        }
+
+
+        if (!amount || amount <= 0) {
+
+            statusElement.innerText =
+                "Amount must be greater than zero";
+
+            return;
+        }
+
+
+        const selectedBill =
+            payableBills.find(
+                bill => bill.billId === billId
+            );
+
+
+        if (!selectedBill) {
+
+            statusElement.innerText =
+                "Selected bill is not valid";
+
+            return;
+        }
+
+
+        if (amount > selectedBill.remainingAmount) {
+
+            alert(
+                `Payment amount cannot exceed the remaining bill amount of ₹${selectedBill.remainingAmount}`
+            );
+
+            amountInput.value =
+                selectedBill.remainingAmount;
+
+            return;
+        }
+
+
+        try {
+
+            statusElement.innerText =
+                "Creating payment...";
+
 
             const configResponse = await fetch(
                 "/api/v1/payments/gateway/config"
             );
 
+
             if (!configResponse.ok) {
-                throw new Error("Unable to load Razorpay configuration");
+
+                throw new Error(
+                    "Unable to load Razorpay configuration"
+                );
             }
 
-            const config = await configResponse.json();
+
+            const config =
+                await configResponse.json();
+
 
             const paymentResponse = await fetch(
                 `/api/v1/accounts/${accountId}/payments`,
@@ -64,85 +283,158 @@
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
+                        billId: billId,
                         amount: amount,
                         paymentMethod: paymentMethod
                     })
                 }
             );
 
+
             if (!paymentResponse.ok) {
-                const error = await paymentResponse.text();
-                throw new Error(error);
+
+                const errorResponse =
+                    await paymentResponse.json();
+
+                throw new Error(
+                    errorResponse.message ||
+                    "Failed to create payment"
+                );
             }
 
-            const payment = await paymentResponse.json();
+
+            const payment =
+                await paymentResponse.json();
+
 
             statusElement.innerText =
-                "Payment created: " + payment.paymentReference;
+                "Payment created: "
+                + payment.paymentReference;
+
 
             const options = {
+
                 key: config.keyId,
-                amount: Math.round(payment.amount * 100),
+
+                amount:
+                    Math.round(payment.amount * 100),
+
                 currency: "INR",
-                name: "Enterprise Billing Platform",
-                description: payment.paymentReference,
-                order_id: payment.gatewayOrderId,
+
+                name:
+                    "Enterprise Billing Platform",
+
+                description:
+                payment.paymentReference,
+
+                order_id:
+                payment.gatewayOrderId,
+
 
                 handler: async function (response) {
 
-                    statusElement.innerText =
-                        "Payment completed. Verifying...";
+                    try {
 
-                    const verifyResponse = await fetch(
-                        `/api/v1/accounts/${accountId}/payments/${payment.paymentId}/verify`,
-                        {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({
-                                gatewayOrderId:
-                                response.razorpay_order_id,
+                        statusElement.innerText =
+                            "Payment completed. Verifying...";
 
-                                gatewayPaymentId:
-                                response.razorpay_payment_id,
 
-                                signature:
-                                response.razorpay_signature
-                            })
+                        const verifyResponse = await fetch(
+                            `/api/v1/accounts/${accountId}/payments/${payment.paymentId}/verify`,
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+
+                                    gatewayOrderId:
+                                    response.razorpay_order_id,
+
+                                    gatewayPaymentId:
+                                    response.razorpay_payment_id,
+
+                                    signature:
+                                    response.razorpay_signature
+                                })
+                            }
+                        );
+
+
+                        if (!verifyResponse.ok) {
+
+                            const errorResponse =
+                                await verifyResponse.json();
+
+                            throw new Error(
+                                errorResponse.message ||
+                                "Payment verification failed"
+                            );
                         }
-                    );
 
-                    if (!verifyResponse.ok) {
-                        const error = await verifyResponse.text();
-                        throw new Error(error);
+
+                        const verifiedPayment =
+                            await verifyResponse.json();
+
+
+                        const successMessage =
+                            "Payment verified successfully. Status: "
+                            + verifiedPayment.status;
+
+
+                        statusElement.innerText =
+                            successMessage;
+
+
+                        await loadBills(false);
+
+
+                        statusElement.innerText =
+                            successMessage;
+
+
+                    } catch (error) {
+
+                        console.error(error);
+
+                        statusElement.innerText =
+                            "Verification failed: "
+                            + error.message;
                     }
-
-                    const verifiedPayment =
-                        await verifyResponse.json();
-
-                    statusElement.innerText =
-                        "Payment verified successfully. Status: "
-                        + verifiedPayment.status;
-                },
-
-                theme: {}
+                }
             };
 
-            const razorpay = new Razorpay(options);
 
-            razorpay.on("payment.failed", function () {
-                statusElement.innerText = "Payment failed";
-            });
+            const razorpay =
+                new Razorpay(options);
+
+
+            razorpay.on(
+                "payment.failed",
+                function (response) {
+
+                    console.error(
+                        response.error
+                    );
+
+                    statusElement.innerText =
+                        "Payment failed";
+                }
+            );
+
 
             razorpay.open();
 
+
         } catch (error) {
+
             console.error(error);
+
             statusElement.innerText =
                 "Error: " + error.message;
         }
     }
+
 </script>
 
 </body>

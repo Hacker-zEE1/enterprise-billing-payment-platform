@@ -3,6 +3,7 @@ package com.shaqib.billing.payment.service;
 import com.shaqib.billing.account.entity.Account;
 import com.shaqib.billing.account.exception.AccountNotFoundException;
 import com.shaqib.billing.account.repository.AccountRepository;
+import com.shaqib.billing.bill.entity.Bill;
 import com.shaqib.billing.payment.entity.Payment;
 import com.shaqib.billing.payment.entity.PaymentMethod;
 import com.shaqib.billing.payment.entity.PaymentStatus;
@@ -12,7 +13,9 @@ import com.shaqib.billing.payment.gateway.GatewayOrderResponse;
 import com.shaqib.billing.payment.gateway.PaymentGateway;
 import com.shaqib.billing.payment.repository.PaymentRepository;
 import com.shaqib.billing.payment.exception.InvalidPaymentException;
+import com.shaqib.billing.paymentallocation.service.PaymentAllocationService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,21 +29,25 @@ public class PaymentService {
     private final AccountRepository accountRepository;
     private final PaymentReferenceGenerator paymentReferenceGenerator;
     private final PaymentGateway paymentGateway;
+    private final PaymentAllocationService paymentAllocationService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
             AccountRepository accountRepository,
             PaymentReferenceGenerator paymentReferenceGenerator,
-            PaymentGateway paymentGateway
+            PaymentGateway paymentGateway,
+            PaymentAllocationService paymentAllocationService
     ) {
         this.paymentRepository = paymentRepository;
         this.accountRepository = accountRepository;
         this.paymentReferenceGenerator = paymentReferenceGenerator;
         this.paymentGateway = paymentGateway;
+        this.paymentAllocationService = paymentAllocationService;
     }
 
     public Payment createPayment(
             UUID accountId,
+            UUID billId,
             BigDecimal amount,
             PaymentMethod paymentMethod
     ) {
@@ -52,11 +59,19 @@ public class PaymentService {
                         )
                 );
 
+
+
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidPaymentException(
                     "Payment amount must be greater than zero"
             );
         }
+
+        Bill bill = paymentAllocationService.validateBillForPayment(
+                accountId,
+                billId,
+                amount
+        );
 
         String paymentReference =
                 paymentReferenceGenerator.generate();
@@ -66,6 +81,7 @@ public class PaymentService {
         Payment payment = new Payment(
                 UUID.randomUUID(),
                 account,
+                bill,
                 paymentReference,
                 amount,
                 paymentMethod,
@@ -152,7 +168,7 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
-
+    @Transactional
     public Payment verifyPayment(
             UUID accountId,
             UUID paymentId,
@@ -183,6 +199,11 @@ public class PaymentService {
 
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
             if (gatewayPaymentId.equals(payment.getGatewayPaymentId())) {
+
+                paymentAllocationService.allocateSuccessfulPaymentToBill(
+                        accountId,
+                        paymentId
+                );
                 return payment;
             }
 
@@ -201,10 +222,17 @@ public class PaymentService {
                 gatewayPaymentId,
                 LocalDateTime.now()
         );
+        Payment savedPayment = paymentRepository.save(payment);
 
-        return paymentRepository.save(payment);
+        paymentAllocationService.allocateSuccessfulPaymentToBill(
+                accountId,
+                paymentId
+        );
+
+        return savedPayment;
     }
 
+    @Transactional
     public Payment processCapturedPaymentWebhook(
             String gatewayOrderId,
             String gatewayPaymentId
@@ -220,6 +248,11 @@ public class PaymentService {
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
 
             if (gatewayPaymentId.equals(payment.getGatewayPaymentId())) {
+
+                paymentAllocationService.allocateSuccessfulPaymentToBill(
+                        payment.getAccount().getAccountId(),
+                        payment.getPaymentId()
+                );
                 return payment;
             }
 
@@ -239,7 +272,14 @@ public class PaymentService {
                 LocalDateTime.now()
         );
 
-        return paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+
+        paymentAllocationService.allocateSuccessfulPaymentToBill(
+                payment.getAccount().getAccountId(),
+                payment.getPaymentId()
+        );
+
+        return savedPayment;
     }
 
 }
