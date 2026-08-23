@@ -32,6 +32,58 @@ Business capabilities such as customer management, account management, billing, 
 
 As the project evolves, selected modules may be extracted into independently deployable microservices based on clear business boundaries and integration requirements.
 
+## Payment Processing and Razorpay Integration
+
+The platform supports bill-aware payment processing with Razorpay integration.
+
+Current capabilities include:
+
+- Razorpay Test Mode payment order creation
+- Dynamic Razorpay Checkout integration
+- Payment signature verification
+- Razorpay `payment.captured` webhook handling
+- Idempotent payment completion
+- Bill-aware payment creation
+- Outstanding bill amount validation before gateway order creation
+- Partial bill payments
+- Automatic payment allocation after successful payment
+- Automatic bill transition from `ISSUED` to `PAID`
+- Payable bill retrieval based on remaining balance
+- Prevention of overpayment
+- PostgreSQL persistence using Flyway migrations
+- Cloud deployment using Render and Neon PostgreSQL
+
+### Payment Flow
+
+```text
+Customer selects Account
+        ↓
+Fetch payable bills
+        ↓
+Select Bill
+        ↓
+Determine remaining bill amount
+        ↓
+Create PENDING Payment
+        ↓
+Create Razorpay Order
+        ↓
+Complete Razorpay Checkout
+        ↓
+Verify payment / process webhook
+        ↓
+Payment becomes SUCCESS
+        ↓
+Create Payment Allocation
+        ↓
+Recalculate bill balance
+        ↓
+Fully allocated?
+   ┌────┴────┐
+   No        Yes
+   ↓          ↓
+ISSUED       PAID
+
 ## Project Status
 
 In Development
