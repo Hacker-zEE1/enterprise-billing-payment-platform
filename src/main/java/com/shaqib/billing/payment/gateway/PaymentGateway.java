@@ -20,4 +20,6 @@ public interface PaymentGateway {
             String payload,
             String signature
     );
+
+    GatewayPaymentDetails fetchPayment(String gatewayPaymentId);
 }

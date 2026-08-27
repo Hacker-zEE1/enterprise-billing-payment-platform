@@ -101,4 +101,48 @@ public class RazorpayPaymentGateway implements PaymentGateway {
             );
         }
     }
+
+    @Override
+    public GatewayPaymentDetails fetchPayment(
+            String gatewayPaymentId
+    ) {
+
+        try {
+
+            RazorpayClient client =
+                    new RazorpayClient(
+                            razorpayProperties.getKeyId(),
+                            razorpayProperties.getKeySecret()
+                    );
+
+            com.razorpay.Payment razorpayPayment =
+                    client.payments.fetch(gatewayPaymentId);
+
+            Number amountValue =
+                    razorpayPayment.get("amount");
+
+            BigDecimal amount =
+                    BigDecimal.valueOf(amountValue.longValue())
+                            .divide(BigDecimal.valueOf(100));
+
+            String orderId =
+                    razorpayPayment.get("order_id");
+
+            String status =
+                    razorpayPayment.get("status");
+
+            return new GatewayPaymentDetails(
+                    gatewayPaymentId,
+                    orderId,
+                    amount,
+                    status
+            );
+
+        } catch (Exception ex) {
+
+            throw new PaymentGatewayException(
+                    "Failed to fetch Razorpay payment"
+            );
+        }
+    }
 }
