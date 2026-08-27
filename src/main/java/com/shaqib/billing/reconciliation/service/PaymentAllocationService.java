@@ -1,4 +1,4 @@
-package com.shaqib.billing.paymentallocation.service;
+package com.shaqib.billing.reconciliation.service;
 
 import com.shaqib.billing.bill.entity.Bill;
 import com.shaqib.billing.bill.entity.BillStatus;

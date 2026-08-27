@@ -2,7 +2,7 @@ package com.shaqib.billing.paymentallocation.controller;
 
 import com.shaqib.billing.paymentallocation.dto.PaymentAllocationResponse;
 import com.shaqib.billing.paymentallocation.entity.PaymentAllocation;
-import com.shaqib.billing.paymentallocation.service.PaymentAllocationService;
+import com.shaqib.billing.reconciliation.service.PaymentAllocationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

@@ -3,7 +3,7 @@ package com.shaqib.billing.paymentallocation.controller;
 import com.shaqib.billing.paymentallocation.dto.CreatePaymentAllocationRequest;
 import com.shaqib.billing.paymentallocation.dto.PaymentAllocationResponse;
 import com.shaqib.billing.paymentallocation.entity.PaymentAllocation;
-import com.shaqib.billing.paymentallocation.service.PaymentAllocationService;
+import com.shaqib.billing.reconciliation.service.PaymentAllocationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

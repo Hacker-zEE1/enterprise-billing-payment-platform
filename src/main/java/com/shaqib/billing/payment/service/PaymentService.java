@@ -13,7 +13,7 @@ import com.shaqib.billing.payment.gateway.GatewayOrderResponse;
 import com.shaqib.billing.payment.gateway.PaymentGateway;
 import com.shaqib.billing.payment.repository.PaymentRepository;
 import com.shaqib.billing.payment.exception.InvalidPaymentException;
-import com.shaqib.billing.paymentallocation.service.PaymentAllocationService;
+import com.shaqib.billing.reconciliation.service.PaymentAllocationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.shaqib.billing.financialtransaction.service.FinancialTransactionService;

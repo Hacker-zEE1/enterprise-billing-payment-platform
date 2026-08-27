@@ -2,6 +2,7 @@ package com.shaqib.billing.reconciliation.service;
 
 import com.shaqib.billing.payment.entity.Payment;
 import com.shaqib.billing.payment.entity.PaymentStatus;
+import com.shaqib.billing.payment.exception.GatewayPaymentNotFoundException;
 import com.shaqib.billing.payment.exception.InvalidPaymentException;
 import com.shaqib.billing.payment.exception.PaymentNotFoundException;
 import com.shaqib.billing.payment.gateway.GatewayPaymentDetails;
@@ -56,10 +57,33 @@ public class PaymentReconciliationService {
             );
         }
 
-        GatewayPaymentDetails gatewayPayment =
-                paymentGateway.fetchPayment(
-                        payment.getGatewayPaymentId()
-                );
+        GatewayPaymentDetails gatewayPayment;
+
+        try {
+            gatewayPayment =
+                    paymentGateway.fetchPayment(
+                            payment.getGatewayPaymentId()
+                    );
+
+        } catch (GatewayPaymentNotFoundException ex) {
+
+            PaymentReconciliation reconciliation =
+                    new PaymentReconciliation(
+                            UUID.randomUUID(),
+                            payment,
+                            payment.getGatewayPaymentId(),
+                            payment.getAmount(),
+                            null,
+                            payment.getStatus().name(),
+                            null,
+                            ReconciliationStatus.PAYMENT_NOT_FOUND,
+                            LocalDateTime.now()
+                    );
+
+            return reconciliationRepository.save(
+                    reconciliation
+            );
+        }
 
         ReconciliationStatus reconciliationStatus =
                 determineStatus(

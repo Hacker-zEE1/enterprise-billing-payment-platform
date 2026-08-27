@@ -4,6 +4,7 @@ import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.shaqib.billing.payment.entity.PaymentGatewayProvider;
+import com.shaqib.billing.payment.exception.GatewayPaymentNotFoundException;
 import org.json.JSONObject;
 import org.springframework.stereotype.Component;
 
@@ -138,7 +139,20 @@ public class RazorpayPaymentGateway implements PaymentGateway {
                     status
             );
 
-        } catch (Exception ex) {
+        } catch (com.razorpay.RazorpayException ex) {
+
+            if (ex.getStatusCode() == 400
+                    && "BAD_REQUEST_ERROR".equalsIgnoreCase(ex.getCode())
+                    && "input_validation_failed".equalsIgnoreCase(ex.getReason())
+                    && ex.getDescription() != null
+                    && ex.getDescription()
+                    .toLowerCase()
+                    .contains("does not exist")) {
+
+                throw new GatewayPaymentNotFoundException(
+                        "Razorpay payment not found: " + gatewayPaymentId
+                );
+            }
 
             throw new PaymentGatewayException(
                     "Failed to fetch Razorpay payment"
