@@ -16,6 +16,7 @@ import com.shaqib.billing.payment.exception.InvalidPaymentException;
 import com.shaqib.billing.paymentallocation.service.PaymentAllocationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.shaqib.billing.financialtransaction.service.FinancialTransactionService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,19 +31,22 @@ public class PaymentService {
     private final PaymentReferenceGenerator paymentReferenceGenerator;
     private final PaymentGateway paymentGateway;
     private final PaymentAllocationService paymentAllocationService;
+    private final FinancialTransactionService financialTransactionService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
             AccountRepository accountRepository,
             PaymentReferenceGenerator paymentReferenceGenerator,
             PaymentGateway paymentGateway,
-            PaymentAllocationService paymentAllocationService
+            PaymentAllocationService paymentAllocationService,
+            FinancialTransactionService financialTransactionService
     ) {
         this.paymentRepository = paymentRepository;
         this.accountRepository = accountRepository;
         this.paymentReferenceGenerator = paymentReferenceGenerator;
         this.paymentGateway = paymentGateway;
         this.paymentAllocationService = paymentAllocationService;
+        this.financialTransactionService = financialTransactionService;
     }
 
     public Payment createPayment(
@@ -198,12 +202,23 @@ public class PaymentService {
         }
 
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
+
             if (gatewayPaymentId.equals(payment.getGatewayPaymentId())) {
+
+                financialTransactionService.recordPaymentReceived(
+                        payment
+                );
 
                 paymentAllocationService.allocateSuccessfulPaymentToBill(
                         accountId,
                         paymentId
                 );
+
+                financialTransactionService.recordPaymentAllocated(
+                        payment,
+                        payment.getBill()
+                );
+
                 return payment;
             }
 
@@ -211,7 +226,6 @@ public class PaymentService {
                     "Payment already completed with a different gateway payment"
             );
         }
-
         if (payment.getStatus() != PaymentStatus.PENDING) {
             throw new InvalidPaymentStatusTransitionException(
                     "Only PENDING payments can be verified"
@@ -222,11 +236,20 @@ public class PaymentService {
                 gatewayPaymentId,
                 LocalDateTime.now()
         );
+
         Payment savedPayment = paymentRepository.save(payment);
 
+        financialTransactionService.recordPaymentReceived(
+                savedPayment
+        );
         paymentAllocationService.allocateSuccessfulPaymentToBill(
                 accountId,
                 paymentId
+        );
+
+        financialTransactionService.recordPaymentAllocated(
+                savedPayment,
+                savedPayment.getBill()
         );
 
         return savedPayment;
@@ -249,15 +272,25 @@ public class PaymentService {
 
             if (gatewayPaymentId.equals(payment.getGatewayPaymentId())) {
 
+                financialTransactionService.recordPaymentReceived(
+                        payment
+                );
+
                 paymentAllocationService.allocateSuccessfulPaymentToBill(
                         payment.getAccount().getAccountId(),
                         payment.getPaymentId()
                 );
+
+                financialTransactionService.recordPaymentAllocated(
+                        payment,
+                        payment.getBill()
+                );
+
                 return payment;
             }
 
             throw new InvalidPaymentException(
-                    "Payment already completed with a different gateway payment ID"
+                    "Payment already completed with a different gateway payment"
             );
         }
 
@@ -274,9 +307,18 @@ public class PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
 
+        financialTransactionService.recordPaymentReceived(
+                savedPayment
+        );
+
         paymentAllocationService.allocateSuccessfulPaymentToBill(
                 payment.getAccount().getAccountId(),
                 payment.getPaymentId()
+        );
+
+        financialTransactionService.recordPaymentAllocated(
+                savedPayment,
+                savedPayment.getBill()
         );
 
         return savedPayment;
