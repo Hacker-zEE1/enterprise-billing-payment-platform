@@ -64,6 +64,72 @@ Bill Status: PAID
 
 ---
 
+## Automatic vs Manual Payment Allocation
+
+The platform supports both automatic and manual payment allocation.
+
+### Automatic Allocation
+
+Razorpay bill payments are automatically allocated because the customer selects the bill before initiating the payment.
+
+```text
+Customer selects Bill
+        ↓
+Create Razorpay Payment
+        ↓
+Payment SUCCESS
+        ↓
+Automatic PaymentAllocation
+        ↓
+Bill balance updated
+```
+
+In this flow, the payment already knows which bill it is intended to settle.
+
+The customer or operator does not need to manually create an allocation after a successful Razorpay payment.
+
+### Manual Allocation
+> Note: The current Razorpay flow is bill-directed and automatically allocated. Manual allocation is intended for future account-level payments that are created without an initial bill association.
+The Payment Allocation API is retained to support account-level payments that are not initially tied to a specific bill.
+
+Example:
+
+```text
+Account receives ₹1,000
+        ↓
+Payment recorded
+        ↓
+Operator allocates later
+
+₹600 → Bill A
+₹400 → Bill B
+```
+
+This pattern is useful for scenarios such as:
+
+- Bank transfer payments
+- Imported payment files
+- Payments received without a bill reference
+- Enterprise back-office allocation
+- Future rule-based payment matching
+
+### Allocation Strategy
+
+```text
+Bill-directed gateway payment
+        ↓
+Automatic Allocation
+
+Account-level payment
+        ↓
+Manual / Rule-based Allocation
+```
+
+The `PaymentAllocationController` therefore remains part of the application even though Razorpay bill payments use automatic allocation.
+
+This separation allows the platform to support both customer-facing bill payment and enterprise-style account-level payment processing.
+
+---
 ## Financial Transactions
 
 The platform records immutable financial transaction entries for successful payment activity.
@@ -122,7 +188,7 @@ Financial transactions are designed as append-only audit records. Existing finan
 
 Razorpay payment verification and the `payment.captured` webhook may both process the same successful payment.
 
-Before creating a financial transaction, the application checks whether the same payment already contains that financial transaction type.
+Before creating a financial transaction, the application checks whether a financial transaction already exists for the same payment and transaction type
 
 This prevents duplicate:
 
