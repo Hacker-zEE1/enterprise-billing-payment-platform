@@ -9,7 +9,7 @@ import com.shaqib.billing.bill.entity.BillStatus;
 import com.shaqib.billing.bill.exception.BillNotFoundException;
 import com.shaqib.billing.bill.exception.InvalidBillException;
 import com.shaqib.billing.bill.repository.BillRepository;
-import com.shaqib.billing.reconciliation.service.PaymentAllocationService;
+import com.shaqib.billing.paymentallocation.service.PaymentAllocationService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

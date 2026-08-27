@@ -1,6 +1,7 @@
 package com.shaqib.billing.reconciliation.repository;
 
 import com.shaqib.billing.reconciliation.entity.PaymentReconciliation;
+import com.shaqib.billing.reconciliation.entity.ReconciliationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -10,4 +11,9 @@ public interface PaymentReconciliationRepository
         extends JpaRepository<PaymentReconciliation, UUID> {
 
     List<PaymentReconciliation> findAllByPaymentPaymentId(UUID paymentId);
+
+    boolean existsByPaymentPaymentIdAndReconciliationStatus(
+            UUID paymentId,
+            ReconciliationStatus reconciliationStatus
+    );
 }

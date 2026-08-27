@@ -14,6 +14,7 @@ import com.shaqib.billing.reconciliation.repository.PaymentReconciliationReposit
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -135,5 +136,57 @@ public class PaymentReconciliationService {
         }
 
         return ReconciliationStatus.MATCHED;
+    }
+
+    public boolean isEligibleForScheduledReconciliation(
+            Payment payment
+    ) {
+
+        if (payment.getStatus() != PaymentStatus.SUCCESS) {
+            return false;
+        }
+
+        if (payment.getGatewayPaymentId() == null) {
+            return false;
+        }
+
+        boolean alreadyMatched =
+                reconciliationRepository
+                        .existsByPaymentPaymentIdAndReconciliationStatus(
+                                payment.getPaymentId(),
+                                ReconciliationStatus.MATCHED
+                        );
+
+        return !alreadyMatched;
+    }
+
+    public void reconcileEligiblePayments() {
+
+        List<Payment> successfulPayments =
+                paymentRepository.findAllByStatus(
+                        PaymentStatus.SUCCESS
+                );
+
+        for (Payment payment : successfulPayments) {
+
+            if (!isEligibleForScheduledReconciliation(payment)) {
+                continue;
+            }
+
+            try {
+                reconcilePayment(
+                        payment.getPaymentId()
+                );
+
+            } catch (Exception ex) {
+
+                System.out.println(
+                        "Reconciliation failed for payment "
+                                + payment.getPaymentId()
+                                + ": "
+                                + ex.getMessage()
+                );
+            }
+        }
     }
 }
