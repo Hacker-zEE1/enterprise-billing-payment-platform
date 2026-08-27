@@ -259,3 +259,198 @@ PAYMENT_ALLOCATED FT
    ↓
 Bill PAID
 ```
+
+---
+
+## Payment Reconciliation
+
+The platform supports reconciliation between internal successful payments and Razorpay payment records.
+
+Reconciliation verifies that the payment recorded internally matches the payment available at the gateway.
+
+### Reconciliation Checks
+
+The following values are compared:
+
+```text
+Internal Payment
+        ↓
+gatewayPaymentId
+gatewayOrderId
+amount
+status
+
+        VS
+
+Razorpay Payment
+        ↓
+paymentId
+orderId
+amount
+status
+```
+
+Possible reconciliation statuses are:
+
+```text
+MATCHED
+AMOUNT_MISMATCH
+STATUS_MISMATCH
+ORDER_MISMATCH
+PAYMENT_NOT_FOUND
+```
+
+### Manual Reconciliation
+
+A payment can be reconciled manually using:
+
+```text
+POST /api/v1/payments/{paymentId}/reconcile
+```
+
+Only successful payments with a gateway payment ID are eligible for reconciliation.
+
+Example:
+
+```text
+Internal Amount   = ₹100
+Gateway Amount    = ₹100
+Internal Status   = SUCCESS
+Gateway Status    = captured
+Order ID          = matching
+
+Result            = MATCHED
+```
+
+### Reconciliation History
+
+Every reconciliation attempt is stored as a separate record.
+
+Previous results are not overwritten.
+
+Example:
+
+```text
+Payment
+   ↓
+MATCHED
+   ↓
+AMOUNT_MISMATCH
+   ↓
+ORDER_MISMATCH
+   ↓
+MATCHED
+```
+
+This provides a historical audit trail of reconciliation activity.
+
+### Scheduled Reconciliation
+
+The application also performs scheduled reconciliation.
+
+The scheduler:
+
+```text
+Find SUCCESS payments
+        ↓
+Check gateway payment ID
+        ↓
+Already MATCHED?
+   yes → skip
+   no  → reconcile
+        ↓
+Persist result
+```
+
+Payments whose latest reconciliation result is not `MATCHED` remain eligible for future reconciliation attempts.
+
+This allows temporary problems such as `PAYMENT_NOT_FOUND` or mismatches to be retried automatically.
+
+The reconciliation schedule and timezone are configurable through application configuration.
+
+### Reconciliation Summary
+
+The current reconciliation health can be retrieved using:
+
+```text
+GET /api/v1/payments/reconciliation/summary
+```
+
+The summary considers only the latest reconciliation result for each payment.
+
+Example:
+
+```json
+{
+  "matched": 5,
+  "amountMismatch": 0,
+  "statusMismatch": 0,
+  "orderMismatch": 0,
+  "paymentNotFound": 1
+}
+```
+
+Historical mismatch records therefore do not affect the current operational summary after a payment later becomes `MATCHED`.
+
+### Current Reconciliation Exceptions
+
+Payments currently requiring attention can be retrieved using:
+
+```text
+GET /api/v1/payments/reconciliation/exceptions
+```
+
+Only payments whose latest reconciliation result is not `MATCHED` are returned.
+
+### Payment Reconciliation History
+
+The complete reconciliation history for an individual payment can be retrieved using:
+
+```text
+GET /api/v1/payments/{paymentId}/reconciliation/history
+```
+
+Results are returned newest first.
+
+### Database Migration
+
+Reconciliation persistence was introduced using:
+
+```text
+V9__create_payment_reconciliations.sql
+```
+
+The `payment_reconciliations` table stores values such as:
+
+```text
+reconciliation_id
+payment_id
+gateway_payment_id
+internal_amount
+gateway_amount
+internal_status
+gateway_status
+reconciliation_status
+reconciled_at
+```
+
+### Validation
+
+The reconciliation flow was validated for:
+
+```text
+MATCHED             ✅
+PAYMENT_NOT_FOUND   ✅
+AMOUNT_MISMATCH     ✅
+ORDER_MISMATCH      ✅
+STATUS_MISMATCH     ✅
+```
+
+`MATCHED`, payment lookup failure, amount mismatch, and order mismatch were validated using controlled local payment scenarios.
+
+`STATUS_MISMATCH` was validated using a JUnit and Mockito unit test with a simulated non-captured gateway payment.
+
+- Razorpay payment reconciliation
+- Scheduled reconciliation with retry handling
+- Reconciliation summary and exception reporting
+- Per-payment reconciliation audit history
