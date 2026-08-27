@@ -18,8 +18,11 @@ public record CreateBillRequest(
         LocalDate dueDate,
 
         @NotNull(message = "Total amount is required")
-        @DecimalMin(value = "0.00", inclusive = true,
-                message = "Total amount must be zero or greater")
+        @DecimalMin(
+                value = "0.01",
+                inclusive = true,
+                message = "Total amount must be greater than zero"
+        )
         BigDecimal totalAmount
 
 ) {
