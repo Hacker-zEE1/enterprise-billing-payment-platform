@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class PaymentReconciliationService {
@@ -23,7 +25,8 @@ public class PaymentReconciliationService {
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
     private final PaymentReconciliationRepository reconciliationRepository;
-
+    private static final Logger logger =
+            LoggerFactory.getLogger(PaymentReconciliationService.class);
     public PaymentReconciliationService(
             PaymentRepository paymentRepository,
             PaymentGateway paymentGateway,
@@ -174,18 +177,24 @@ public class PaymentReconciliationService {
             }
 
             try {
-                reconcilePayment(
-                        payment.getPaymentId()
+                PaymentReconciliation reconciliation =
+                        reconcilePayment(payment.getPaymentId());
+
+                logger.info(
+                        "Payment {} reconciled with status {}",
+                        payment.getPaymentId(),
+                        reconciliation.getReconciliationStatus()
+
                 );
 
             } catch (Exception ex) {
 
-                System.out.println(
-                        "Reconciliation failed for payment "
-                                + payment.getPaymentId()
-                                + ": "
-                                + ex.getMessage()
+                logger.error(
+                        "Reconciliation failed for payment {}: {}",
+                        payment.getPaymentId(),
+                        ex.getMessage()
                 );
+
             }
         }
     }

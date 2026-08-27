@@ -15,7 +15,10 @@ public class PaymentReconciliationScheduler {
         this.reconciliationService = reconciliationService;
     }
 
-    @Scheduled(cron = "0 0 2 * * *")
+    @Scheduled(
+            cron = "${reconciliation.scheduler.cron}",
+            zone = "${reconciliation.scheduler.zone}"
+    )
     public void reconcilePayments() {
 
         reconciliationService.reconcileEligiblePayments();
