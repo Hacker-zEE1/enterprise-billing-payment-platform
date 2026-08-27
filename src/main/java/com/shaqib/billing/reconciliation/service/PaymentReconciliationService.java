@@ -8,6 +8,9 @@ import com.shaqib.billing.payment.exception.PaymentNotFoundException;
 import com.shaqib.billing.payment.gateway.GatewayPaymentDetails;
 import com.shaqib.billing.payment.gateway.PaymentGateway;
 import com.shaqib.billing.payment.repository.PaymentRepository;
+import com.shaqib.billing.reconciliation.dto.PaymentReconciliationResponse;
+import com.shaqib.billing.reconciliation.dto.ReconciliationExceptionResponse;
+import com.shaqib.billing.reconciliation.dto.ReconciliationSummaryResponse;
 import com.shaqib.billing.reconciliation.entity.PaymentReconciliation;
 import com.shaqib.billing.reconciliation.entity.ReconciliationStatus;
 import com.shaqib.billing.reconciliation.repository.PaymentReconciliationRepository;
@@ -18,6 +21,12 @@ import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 @Service
 public class PaymentReconciliationService {
@@ -197,5 +206,130 @@ public class PaymentReconciliationService {
 
             }
         }
+    }
+
+
+
+    public ReconciliationSummaryResponse getSummary() {
+
+        List<PaymentReconciliation> reconciliations =
+                reconciliationRepository.findAllByOrderByReconciledAtDesc();
+
+        Map<UUID, ReconciliationStatus> latestStatusByPayment =
+                new HashMap<>();
+
+        for (PaymentReconciliation reconciliation : reconciliations) {
+
+            UUID paymentId =
+                    reconciliation.getPayment().getPaymentId();
+
+            latestStatusByPayment.putIfAbsent(
+                    paymentId,
+                    reconciliation.getReconciliationStatus()
+            );
+        }
+
+        long matched = 0;
+        long amountMismatch = 0;
+        long statusMismatch = 0;
+        long orderMismatch = 0;
+        long paymentNotFound = 0;
+
+        for (ReconciliationStatus status :
+                latestStatusByPayment.values()) {
+
+            switch (status) {
+
+                case MATCHED ->
+                        matched++;
+
+                case AMOUNT_MISMATCH ->
+                        amountMismatch++;
+
+                case STATUS_MISMATCH ->
+                        statusMismatch++;
+
+                case ORDER_MISMATCH ->
+                        orderMismatch++;
+
+                case PAYMENT_NOT_FOUND ->
+                        paymentNotFound++;
+            }
+        }
+
+        return new ReconciliationSummaryResponse(
+                matched,
+                amountMismatch,
+                statusMismatch,
+                orderMismatch,
+                paymentNotFound
+        );
+    }
+
+
+    public List<ReconciliationExceptionResponse> getCurrentExceptions() {
+
+        List<PaymentReconciliation> reconciliations =
+                reconciliationRepository.findAllByOrderByReconciledAtDesc();
+
+        Map<UUID, PaymentReconciliation> latestByPayment =
+                new LinkedHashMap<>();
+
+        for (PaymentReconciliation reconciliation : reconciliations) {
+
+            UUID paymentId =
+                    reconciliation.getPayment().getPaymentId();
+
+            latestByPayment.putIfAbsent(
+                    paymentId,
+                    reconciliation
+            );
+        }
+
+        return latestByPayment.values()
+                .stream()
+                .filter(reconciliation ->
+                        reconciliation.getReconciliationStatus()
+                                != ReconciliationStatus.MATCHED
+                )
+                .map(reconciliation ->
+                        new ReconciliationExceptionResponse(
+                                reconciliation.getReconciliationId(),
+                                reconciliation.getPayment().getPaymentId(),
+                                reconciliation.getGatewayPaymentId(),
+                                reconciliation.getInternalAmount(),
+                                reconciliation.getGatewayAmount(),
+                                reconciliation.getInternalStatus(),
+                                reconciliation.getGatewayStatus(),
+                                reconciliation.getReconciliationStatus(),
+                                reconciliation.getReconciledAt()
+                        )
+                )
+                .toList();
+    }
+
+
+
+    public List<PaymentReconciliationResponse> getPaymentHistory(
+            UUID paymentId
+    ) {
+
+        return reconciliationRepository
+                .findAllByPaymentPaymentIdOrderByReconciledAtDesc(paymentId)
+                .stream()
+                .map(reconciliation ->
+                        new PaymentReconciliationResponse(
+                                reconciliation.getReconciliationId(),
+                                reconciliation.getPayment().getPaymentId(),
+                                reconciliation.getGatewayPaymentId(),
+                                reconciliation.getInternalAmount(),
+                                reconciliation.getGatewayAmount(),
+                                reconciliation.getInternalStatus(),
+                                reconciliation.getGatewayStatus(),
+                                reconciliation.getReconciliationStatus(),
+                                reconciliation.getReconciledAt()
+                        )
+                )
+                .toList();
     }
 }

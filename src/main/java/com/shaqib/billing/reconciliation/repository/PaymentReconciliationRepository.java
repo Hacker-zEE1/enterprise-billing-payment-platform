@@ -16,4 +16,14 @@ public interface PaymentReconciliationRepository
             UUID paymentId,
             ReconciliationStatus reconciliationStatus
     );
+
+    long countByReconciliationStatus(
+            ReconciliationStatus reconciliationStatus
+    );
+    List<PaymentReconciliation> findAllByOrderByReconciledAtDesc();
+
+    List<PaymentReconciliation> findAllByPaymentPaymentIdOrderByReconciledAtDesc(
+            UUID paymentId
+    );
+
 }

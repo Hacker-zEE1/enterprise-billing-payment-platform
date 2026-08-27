@@ -1,11 +1,14 @@
 package com.shaqib.billing.reconciliation.controller;
 
 import com.shaqib.billing.reconciliation.dto.PaymentReconciliationResponse;
+import com.shaqib.billing.reconciliation.dto.ReconciliationExceptionResponse;
+import com.shaqib.billing.reconciliation.dto.ReconciliationSummaryResponse;
 import com.shaqib.billing.reconciliation.entity.PaymentReconciliation;
 import com.shaqib.billing.reconciliation.service.PaymentReconciliationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -42,6 +45,35 @@ public class PaymentReconciliationController {
                 );
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/reconciliation/summary")
+    public ResponseEntity<ReconciliationSummaryResponse> getReconciliationSummary() {
+
+        return ResponseEntity.ok(
+                reconciliationService.getSummary()
+        );
+    }
+
+    @GetMapping("/reconciliation/exceptions")
+    public ResponseEntity<List<ReconciliationExceptionResponse>>
+    getReconciliationExceptions() {
+
+        return ResponseEntity.ok(
+                reconciliationService.getCurrentExceptions()
+        );
+    }
+
+
+    @GetMapping("/{paymentId}/reconciliation/history")
+    public ResponseEntity<List<PaymentReconciliationResponse>>
+    getPaymentReconciliationHistory(
+            @PathVariable UUID paymentId
+    ) {
+
+        return ResponseEntity.ok(
+                reconciliationService.getPaymentHistory(paymentId)
+        );
     }
 
 }
