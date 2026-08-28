@@ -4,6 +4,7 @@ import com.shaqib.billing.account.entity.Account;
 import com.shaqib.billing.account.exception.AccountNotFoundException;
 import com.shaqib.billing.account.repository.AccountRepository;
 import com.shaqib.billing.bill.entity.Bill;
+import com.shaqib.billing.notification.service.NotificationService;
 import com.shaqib.billing.payment.entity.Payment;
 import com.shaqib.billing.payment.entity.PaymentMethod;
 import com.shaqib.billing.payment.entity.PaymentStatus;
@@ -32,14 +33,15 @@ public class PaymentService {
     private final PaymentGateway paymentGateway;
     private final PaymentAllocationService paymentAllocationService;
     private final FinancialTransactionService financialTransactionService;
-
+    private final NotificationService notificationService;
     public PaymentService(
             PaymentRepository paymentRepository,
             AccountRepository accountRepository,
             PaymentReferenceGenerator paymentReferenceGenerator,
             PaymentGateway paymentGateway,
             PaymentAllocationService paymentAllocationService,
-            FinancialTransactionService financialTransactionService
+            FinancialTransactionService financialTransactionService,
+            NotificationService notificationService
     ) {
         this.paymentRepository = paymentRepository;
         this.accountRepository = accountRepository;
@@ -47,6 +49,7 @@ public class PaymentService {
         this.paymentGateway = paymentGateway;
         this.paymentAllocationService = paymentAllocationService;
         this.financialTransactionService = financialTransactionService;
+        this.notificationService = notificationService;
     }
 
     public Payment createPayment(
@@ -219,6 +222,8 @@ public class PaymentService {
                         payment.getBill()
                 );
 
+                notificationService.createPaymentSuccessNotification(payment);
+
                 return payment;
             }
 
@@ -252,6 +257,8 @@ public class PaymentService {
                 savedPayment.getBill()
         );
 
+        notificationService.createPaymentSuccessNotification(savedPayment);
+
         return savedPayment;
     }
 
@@ -284,6 +291,10 @@ public class PaymentService {
                 financialTransactionService.recordPaymentAllocated(
                         payment,
                         payment.getBill()
+                );
+
+                notificationService.createPaymentSuccessNotification(
+                        payment
                 );
 
                 return payment;
@@ -321,7 +332,12 @@ public class PaymentService {
                 savedPayment.getBill()
         );
 
+        notificationService.createPaymentSuccessNotification(
+                payment
+        );
+
         return savedPayment;
     }
+
 
 }
