@@ -8,7 +8,7 @@ The project is being developed using Java and Spring Boot with the objective of 
 
 ## Business Domain
 
-The system will manage the lifecycle of billing and payment transactions including:
+The system manages the lifecycle of billing and payment transactions including:
 
 - Customer management
 - Account management
@@ -26,9 +26,9 @@ Customer → Account → Bill → Invoice → Payment → Payment Allocation →
 
 ## Architecture
 
-The application will initially be developed as a modular monolith.
+The application is currently developed as a modular monolith.
 
-Business capabilities such as customer management, account management, billing, payment processing, transaction management, reconciliation and notifications will be organized as separate modules within a single Spring Boot application.
+Business capabilities such as customer management, account management, billing, payment processing, transaction management, reconciliation and notifications are organized as separate modules within a single Spring Boot application.
 
 As the project evolves, selected modules may be extracted into independently deployable microservices based on clear business boundaries and integration requirements.
 
@@ -53,10 +53,11 @@ Current capabilities include:
 - Financial transaction creation
 - Payment reconciliation
 - Asynchronous payment-success notifications
-- SMTP email delivery
+- Profile-based email delivery using SMTP locally and Resend HTTP API in cloud
 - Automatic notification retry handling
 - PostgreSQL persistence using Flyway migrations
 - Cloud deployment using Render and Neon PostgreSQL
+- Managed Kafka integration using Aiven
 
 ### Payment Flow
 
@@ -89,7 +90,7 @@ Publish Notification Event to Kafka
         ↓
 Kafka Consumer Processes Notification
         ↓
-Send Email through SMTP
+Send Email through EmailSender
         ↓
 Notification becomes SENT
         ↓
@@ -121,7 +122,7 @@ Notification Consumer
         ↓
 Load Notification from Database
         ↓
-Send Email using SMTP
+Send Email through EmailSender
         ↓
    ┌────┴────┐
  Success    Failure
@@ -162,6 +163,22 @@ The current maximum retry count is 3.
 
 The retry scheduler runs every 60 seconds by default and can be configured using the `NOTIFICATION_RETRY_DELAY_MS` environment variable.
 
+### Cloud Email Delivery
+
+Email delivery uses the `EmailSender` abstraction.
+
+- Local: Gmail SMTP through `SmtpEmailSender`
+- Cloud: Resend HTTP API through `ResendEmailSender`
+- Kafka: Aiven managed Kafka
+- Retry: scheduled retry for failed/stale notifications
+- Maximum retries: 3
+
+The cloud environment uses the Spring `cloud` profile so the HTTP-based Resend sender is selected instead of SMTP.
+
+The Resend REST API is called using Spring `RestClient` to avoid an OkHttp dependency conflict between the Resend Java SDK and the Razorpay Java SDK.
+
+See [Notification and Email Processing Flow](docs/notification-flow.md).
+
 ## Reconciliation
 
 Successful gateway payments can be reconciled against Razorpay payment information.
@@ -189,7 +206,7 @@ Current automated test coverage includes:
 
 - Payment reconciliation service behavior
 - Successful notification delivery
-- SMTP failure handling
+- Email delivery failure handling
 - Already-sent notification protection
 - Successful retry of failed notifications
 - Recovery of stale `PENDING` notifications
