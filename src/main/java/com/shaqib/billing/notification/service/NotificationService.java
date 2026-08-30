@@ -4,11 +4,13 @@ import com.shaqib.billing.notification.entity.Notification;
 import com.shaqib.billing.notification.entity.NotificationChannel;
 import com.shaqib.billing.notification.entity.NotificationStatus;
 import com.shaqib.billing.notification.entity.NotificationType;
+import com.shaqib.billing.notification.event.NotificationCreatedEvent;
 import com.shaqib.billing.notification.event.NotificationEvent;
 import com.shaqib.billing.notification.messaging.NotificationEventProducer;
 import com.shaqib.billing.notification.repository.NotificationRepository;
 import com.shaqib.billing.payment.entity.Payment;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -18,13 +20,16 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationEventProducer notificationEventProducer;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public NotificationService(
             NotificationRepository notificationRepository,
-            NotificationEventProducer notificationEventProducer
+            NotificationEventProducer notificationEventProducer,
+            ApplicationEventPublisher applicationEventPublisher
     ) {
         this.notificationRepository = notificationRepository;
         this.notificationEventProducer = notificationEventProducer;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     public Notification createPaymentSuccessNotification(
@@ -77,10 +82,8 @@ public class NotificationService {
         Notification savedNotification =
                 notificationRepository.save(notification);
 
-        notificationEventProducer.publish(
-                new NotificationEvent(
-                        savedNotification.getNotificationId()
-                )
+        applicationEventPublisher.publishEvent(
+                new NotificationCreatedEvent(savedNotification.getNotificationId())
         );
 
         return savedNotification;
