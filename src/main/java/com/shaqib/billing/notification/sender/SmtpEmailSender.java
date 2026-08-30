@@ -3,8 +3,9 @@ package com.shaqib.billing.notification.sender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
-
+import org.springframework.context.annotation.Profile;
 @Component
+@Profile("!cloud")
 public class SmtpEmailSender implements EmailSender {
 
     private final JavaMailSender javaMailSender;
