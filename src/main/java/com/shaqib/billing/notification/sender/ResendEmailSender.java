@@ -1,26 +1,31 @@
 package com.shaqib.billing.notification.sender;
 
-import com.resend.Resend;
-import com.resend.core.exception.ResendException;
-import com.resend.services.emails.model.CreateEmailOptions;
-import com.resend.services.emails.model.CreateEmailResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+
+import java.util.List;
+import java.util.Map;
 
 @Component
 @Profile("cloud")
 public class ResendEmailSender implements EmailSender {
 
-    private final Resend resend;
+    private final RestClient restClient;
     private final String fromEmail;
 
     public ResendEmailSender(
             @Value("${resend.api-key}") String apiKey,
             @Value("${resend.from-email}") String fromEmail
     ) {
-        this.resend = new Resend(apiKey);
         this.fromEmail = fromEmail;
+
+        this.restClient = RestClient.builder()
+                .baseUrl("https://api.resend.com")
+                .defaultHeader("Authorization", "Bearer " + apiKey)
+                .build();
     }
 
     @Override
@@ -30,23 +35,18 @@ public class ResendEmailSender implements EmailSender {
             String message
     ) {
 
-        CreateEmailOptions email =
-                CreateEmailOptions.builder()
-                        .from(fromEmail)
-                        .to(recipient)
-                        .subject(subject)
-                        .text(message)
-                        .build();
+        Map<String, Object> request = Map.of(
+                "from", fromEmail,
+                "to", List.of(recipient),
+                "subject", subject,
+                "text", message
+        );
 
-        try {
-            CreateEmailResponse response =
-                    resend.emails().send(email);
-
-        } catch (ResendException ex) {
-            throw new RuntimeException(
-                    "Failed to send email through Resend",
-                    ex
-            );
-        }
+        restClient.post()
+                .uri("/emails")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .toBodilessEntity();
     }
 }
