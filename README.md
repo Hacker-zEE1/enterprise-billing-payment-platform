@@ -212,8 +212,28 @@ Current automated test coverage includes:
 - Recovery of stale `PENDING` notifications
 - Skipping recent `PENDING` notifications
 - Notification retry failure handling
+- JWT authentication filter behavior
+- Customer authorization
+- Account authorization
+- Bill authorization
+- Payment authorization
+- Payment allocation authorization
+- Reconciliation authorization
+- Razorpay webhook security
+- Registration token validation
+- Registration token expiry and one-time usage
+- ADMIN-only registration invitation creation
+- Application user registration
 - Spring Boot application context validation
 
+Current test suite:
+
+```text
+Tests run: 61
+Failures: 0
+Errors: 0
+Skipped: 0
+```
 ## Database Migrations
 
 Database schema changes are managed using Flyway.
@@ -241,10 +261,37 @@ Swagger/OpenAPI is available locally at:
 http://localhost:8080/swagger-ui/index.html
 ```
 
+## Security
+
+The platform uses Spring Security with stateless JWT authentication and role-based authorization.
+
+Implemented security features include:
+
+- JWT-based authentication
+- BCrypt password hashing
+- `ADMIN` and `CUSTOMER` roles
+- Method-level authorization with `@PreAuthorize`
+- Customer and account ownership checks
+- One-time registration invitations
+- Hashed and expiring registration tokens
+- Pessimistic locking to prevent concurrent token reuse
+- Customer lifecycle synchronization with login access
+- Immutable login email through normal profile updates
+- Proper `401 Unauthorized` and `403 Forbidden` handling
+- Razorpay webhook signature validation
+- Swagger/OpenAPI JWT Bearer authentication support
+
+Security-related migrations:
+
+- `V12__create_app_users.sql` - Application users
+- `V13__link_app_user_to_customer.sql` - Customer/user relationship
+- `V14__create_registration_tokens.sql` - Registration tokens
+
 ## Documentation
 
 - [Payment Flow](docs/payment-flow.md)
 - [Notification and Email Processing Flow](docs/notification-flow.md)
+- [Security Architecture](docs/SECURITY.md)
 
 ## Project Status
 
