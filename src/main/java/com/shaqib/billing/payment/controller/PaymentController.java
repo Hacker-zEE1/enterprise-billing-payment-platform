@@ -9,7 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +24,9 @@ public class PaymentController {
     }
 
     @PostMapping
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
     public ResponseEntity<PaymentResponse> createPayment(
             @PathVariable UUID accountId,
             @Valid @RequestBody CreatePaymentRequest request
@@ -60,6 +63,9 @@ public class PaymentController {
 
 
     @GetMapping("/{paymentId}")
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
     public ResponseEntity<PaymentResponse> getPaymentById(
             @PathVariable UUID accountId,
             @PathVariable UUID paymentId
@@ -74,6 +80,9 @@ public class PaymentController {
     }
 
     @GetMapping
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
     public ResponseEntity<List<PaymentResponse>> getPaymentsByAccountId(
             @PathVariable UUID accountId
     ) {
@@ -89,6 +98,7 @@ public class PaymentController {
 
 
     @PatchMapping("/{paymentId}/success")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PaymentResponse> markPaymentSuccess(
             @PathVariable UUID accountId,
             @PathVariable UUID paymentId
@@ -103,6 +113,7 @@ public class PaymentController {
     }
 
     @PatchMapping("/{paymentId}/failed")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PaymentResponse> markPaymentFailed(
             @PathVariable UUID accountId,
             @PathVariable UUID paymentId
@@ -117,6 +128,7 @@ public class PaymentController {
     }
 
     @PatchMapping("/{paymentId}/cancel")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PaymentResponse> cancelPayment(
             @PathVariable UUID accountId,
             @PathVariable UUID paymentId
@@ -131,6 +143,9 @@ public class PaymentController {
     }
 
     @PostMapping("/{paymentId}/verify")
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
     public ResponseEntity<PaymentResponse> verifyPayment(
             @PathVariable UUID accountId,
             @PathVariable UUID paymentId,

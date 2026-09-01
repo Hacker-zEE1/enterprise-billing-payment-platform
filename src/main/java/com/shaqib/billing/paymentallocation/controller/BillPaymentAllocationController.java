@@ -5,7 +5,7 @@ import com.shaqib.billing.paymentallocation.entity.PaymentAllocation;
 import com.shaqib.billing.paymentallocation.service.PaymentAllocationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,6 +22,9 @@ public class BillPaymentAllocationController {
     }
 
     @GetMapping
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
     public ResponseEntity<List<PaymentAllocationResponse>> getAllocationsByBill(
             @PathVariable UUID accountId,
             @PathVariable UUID billId

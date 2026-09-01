@@ -7,6 +7,7 @@ import com.shaqib.billing.account.service.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,6 +36,7 @@ public class AccountController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AccountResponse> createAccount(
             @PathVariable UUID customerId,
             @Valid @RequestBody CreateAccountRequest request
@@ -54,6 +56,9 @@ public class AccountController {
 
 
     @GetMapping("/{accountId}")
+    @PreAuthorize(
+            "@customerAuthorizationService.canAccessCustomer(authentication, #customerId)"
+    )
     public ResponseEntity<AccountResponse> getAccountById(
             @PathVariable UUID customerId,
             @PathVariable UUID accountId
@@ -71,6 +76,9 @@ public class AccountController {
 
 
     @GetMapping
+    @PreAuthorize(
+            "@customerAuthorizationService.canAccessCustomer(authentication, #customerId)"
+    )
     public ResponseEntity<List<AccountResponse>> getAccountsByCustomerId(
             @PathVariable UUID customerId
     ) {
@@ -86,6 +94,7 @@ public class AccountController {
 
 
     @PatchMapping("/{accountId}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AccountResponse> deactivateAccount(
             @PathVariable UUID customerId,
             @PathVariable UUID accountId
@@ -100,6 +109,7 @@ public class AccountController {
     }
 
     @PatchMapping("/{accountId}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AccountResponse> activateAccount(
             @PathVariable UUID customerId,
             @PathVariable UUID accountId

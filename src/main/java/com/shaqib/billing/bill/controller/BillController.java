@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1/accounts/{accountId}/bills")
@@ -24,6 +25,7 @@ public class BillController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BillResponse> createBill(
             @PathVariable UUID accountId,
             @Valid @RequestBody CreateBillRequest request
@@ -43,6 +45,9 @@ public class BillController {
     }
 
     @GetMapping("/payable")
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
     public ResponseEntity<List<PayableBillResponse>> getPayableBills(
             @PathVariable UUID accountId
     ) {
@@ -53,6 +58,9 @@ public class BillController {
 
 
     @GetMapping("/{billId}")
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
     public ResponseEntity<BillResponse> getBillById(
             @PathVariable UUID accountId,
             @PathVariable UUID billId
@@ -64,6 +72,10 @@ public class BillController {
     }
 
     @GetMapping
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
+
     public ResponseEntity<List<BillResponse>> getBillsByAccountId(
             @PathVariable UUID accountId
     ) {
@@ -78,6 +90,7 @@ public class BillController {
     }
 
     @PatchMapping("/{billId}/issue")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BillResponse> issueBill(
             @PathVariable UUID accountId,
             @PathVariable UUID billId
@@ -89,6 +102,7 @@ public class BillController {
     }
 
     @PatchMapping("/{billId}/cancel")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BillResponse> cancelBill(
             @PathVariable UUID accountId,
             @PathVariable UUID billId

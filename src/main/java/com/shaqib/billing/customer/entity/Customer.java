@@ -105,13 +105,11 @@ public class Customer {
     public void updateDetails(
             String firstName,
             String lastName,
-            String email,
             String phoneNumber,
             LocalDateTime updatedAt
     ) {
         this.firstName = firstName;
         this.lastName = lastName;
-        this.email = email;
         this.phoneNumber = phoneNumber;
         this.updatedAt = updatedAt;
     }

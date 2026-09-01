@@ -6,7 +6,9 @@ import com.shaqib.billing.customer.exception.CustomerNotFoundException;
 import com.shaqib.billing.customer.exception.DuplicateCustomerEmailException;
 import com.shaqib.billing.customer.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
-
+import com.shaqib.billing.security.user.AppUser;
+import com.shaqib.billing.security.user.AppUserRepository;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -15,9 +17,14 @@ import java.util.UUID;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final AppUserRepository appUserRepository;
 
-    public CustomerService(CustomerRepository customerRepository) {
+    public CustomerService(
+            CustomerRepository customerRepository,
+            AppUserRepository appUserRepository
+    ) {
         this.customerRepository = customerRepository;
+        this.appUserRepository = appUserRepository;
     }
 
     public Customer createCustomer(
@@ -68,7 +75,6 @@ public class CustomerService {
             UUID customerId,
             String firstName,
             String lastName,
-            String email,
             String phoneNumber
     ) {
         Customer customer = customerRepository.findById(customerId)
@@ -78,16 +84,10 @@ public class CustomerService {
                         )
                 );
 
-        if (customerRepository.existsByEmailAndCustomerIdNot(email, customerId)) {
-            throw new DuplicateCustomerEmailException(
-                    "Customer with this email already exists"
-            );
-        }
 
         customer.updateDetails(
                 firstName,
                 lastName,
-                email,
                 phoneNumber,
                 LocalDateTime.now()
         );
@@ -96,6 +96,7 @@ public class CustomerService {
     }
 
 
+    @Transactional
     public Customer deactivateCustomer(UUID customerId) {
 
         Customer customer = customerRepository.findById(customerId)
@@ -107,10 +108,18 @@ public class CustomerService {
 
         customer.deactivate(LocalDateTime.now());
 
+        appUserRepository
+                .findByCustomerCustomerId(customerId)
+                .ifPresent(user -> {
+                    user.disable();
+                    appUserRepository.save(user);
+                });
+
         return customerRepository.save(customer);
     }
 
 
+    @Transactional
     public Customer activateCustomer(UUID customerId) {
 
         Customer customer = customerRepository.findById(customerId)
@@ -121,6 +130,13 @@ public class CustomerService {
                 );
 
         customer.activate(LocalDateTime.now());
+
+        appUserRepository
+                .findByCustomerCustomerId(customerId)
+                .ifPresent(user -> {
+                    user.enable();
+                    appUserRepository.save(user);
+                });
 
         return customerRepository.save(customer);
     }

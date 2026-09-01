@@ -7,7 +7,7 @@ import com.shaqib.billing.reconciliation.entity.PaymentReconciliation;
 import com.shaqib.billing.reconciliation.service.PaymentReconciliationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +24,7 @@ public class PaymentReconciliationController {
     }
 
     @PostMapping("/{paymentId}/reconcile")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PaymentReconciliationResponse> reconcilePayment(
             @PathVariable UUID paymentId
     ) {
@@ -48,6 +49,7 @@ public class PaymentReconciliationController {
     }
 
     @GetMapping("/reconciliation/summary")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ReconciliationSummaryResponse> getReconciliationSummary() {
 
         return ResponseEntity.ok(
@@ -56,6 +58,7 @@ public class PaymentReconciliationController {
     }
 
     @GetMapping("/reconciliation/exceptions")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ReconciliationExceptionResponse>>
     getReconciliationExceptions() {
 
@@ -66,6 +69,7 @@ public class PaymentReconciliationController {
 
 
     @GetMapping("/{paymentId}/reconciliation/history")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<PaymentReconciliationResponse>>
     getPaymentReconciliationHistory(
             @PathVariable UUID paymentId

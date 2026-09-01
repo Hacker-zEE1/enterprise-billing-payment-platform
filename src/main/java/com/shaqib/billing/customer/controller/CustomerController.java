@@ -9,7 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +24,7 @@ public class CustomerController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CustomerResponse> createCustomer(
             @Valid @RequestBody CreateCustomerRequest request
     ) {
@@ -43,6 +44,9 @@ public class CustomerController {
 
 
     @GetMapping("/{customerId}")
+    @PreAuthorize(
+            "@customerAuthorizationService.canAccessCustomer(authentication, #customerId)"
+    )
     public ResponseEntity<CustomerResponse> getCustomerById(
             @PathVariable UUID customerId
     ) {
@@ -55,6 +59,7 @@ public class CustomerController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<CustomerResponse>> getAllCustomers() {
 
         List<CustomerResponse> responses = customerService.getAllCustomers()
@@ -66,6 +71,9 @@ public class CustomerController {
     }
 
     @PutMapping("/{customerId}")
+    @PreAuthorize(
+            "@customerAuthorizationService.canAccessCustomer(authentication, #customerId)"
+    )
     public ResponseEntity<CustomerResponse> updateCustomer(
             @PathVariable UUID customerId,
             @Valid @RequestBody UpdateCustomerRequest request
@@ -75,7 +83,6 @@ public class CustomerController {
                 customerId,
                 request.firstName(),
                 request.lastName(),
-                request.email(),
                 request.phoneNumber()
         );
 
@@ -86,6 +93,7 @@ public class CustomerController {
 
 
     @PatchMapping("/{customerId}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CustomerResponse> deactivateCustomer(
             @PathVariable UUID customerId
     ) {
@@ -98,6 +106,7 @@ public class CustomerController {
 
 
     @PatchMapping("/{customerId}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CustomerResponse> activateCustomer(
             @PathVariable UUID customerId
     ) {

@@ -8,7 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +25,7 @@ public class PaymentAllocationController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PaymentAllocationResponse> createAllocation(
             @PathVariable UUID accountId,
             @PathVariable UUID paymentId,
@@ -58,6 +59,9 @@ public class PaymentAllocationController {
 
 
     @GetMapping
+    @PreAuthorize(
+            "@accountAuthorizationService.canAccessAccount(authentication, #accountId)"
+    )
     public ResponseEntity<List<PaymentAllocationResponse>> getAllocationsByPayment(
             @PathVariable UUID accountId,
             @PathVariable UUID paymentId
